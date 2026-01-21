@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCV 규정 관리</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    /* 커스텀 스크롤바 */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div class="h-screen flex flex-col">
+    <!-- 헤더 -->
+    <div class="bg-white border-b border-gray-200 px-6 py-4 shrink-0">
+      <div class="flex items-center justify-between">
+        <h1 class="text-xl font-bold text-gray-900">SCV 규정 관리</h1>
+        <div class="text-sm text-gray-500">
+          HOME &gt; 관리자 &gt; <span class="font-medium text-gray-900">SCV규정관리</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 메인 컨텐츠 -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- 왼쪽: 규정 분류 목록 -->
+      <div class="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0">
+        <!-- 목록 헤더 -->
+        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between shrink-0">
+          <h2 class="font-semibold text-gray-800 flex items-center gap-2">
+            <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+            서비스 규정 분류
+          </h2>
+          <button
+            onclick="handleNewMode()"
+            class="px-3 py-1.5 bg-blue-500 text-white rounded text-xs font-medium hover:bg-blue-600"
+          >
+            + 신규등록
+          </button>
+        </div>
+
+        <!-- 규정 목록 -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar" id="rules-list">
+          <!-- 동적으로 생성됨 -->
+        </div>
+
+        <!-- 목록 푸터 -->
+        <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 shrink-0">
+          <button
+            onclick="handleDelete()"
+            id="delete-btn"
+            class="w-full px-4 py-2 border border-gray-300 text-gray-400 rounded text-sm font-medium"
+          >
+            선택 삭제 (<span id="selected-count">0</span>)
+          </button>
+        </div>
+      </div>
+
+      <!-- 오른쪽: 에디터 영역 -->
+      <div class="flex-1 bg-white flex flex-col">
+        <!-- 에디터 헤더 -->
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+          <div id="editor-header">
+            <p class="text-gray-500">왼쪽에서 규정을 선택하거나 신규등록을 클릭하세요</p>
+          </div>
+          <div id="editor-actions" class="hidden flex gap-2">
+            <button
+              onclick="handleCancel()"
+              class="px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50"
+            >
+              취소
+            </button>
+            <button
+              onclick="handleSave()"
+              id="save-btn"
+              class="px-6 py-2 bg-blue-500 text-white rounded text-sm font-medium hover:bg-blue-600"
+            >
+              저장
+            </button>
+          </div>
+        </div>
+
+        <!-- 에디터 -->
+        <div id="editor-container" class="hidden flex-1 flex flex-col p-6 overflow-hidden">
+          <div class="flex-1 flex flex-col border border-gray-300 rounded-lg overflow-hidden">
+            <!-- 에디터 툴바 -->
+            <div class="bg-gray-50 px-3 py-2 flex items-center gap-1 flex-wrap border-b border-gray-300 shrink-0">
+              <select 
+                class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white"
+                onchange="document.execCommand('fontName', false, this.value)"
+              >
+                <option value="돋움">돋움</option>
+                <option value="굴림">굴림</option>
+                <option value="맑은 고딕">맑은 고딕</option>
+                <option value="Arial">Arial</option>
+              </select>
+              <select 
+                class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white w-16"
+                onchange="document.execCommand('fontSize', false, this.value)"
+              >
+                <option value="1">9pt</option>
+                <option value="2">10pt</option>
+                <option value="3">12pt</option>
+                <option value="4">14pt</option>
+                <option value="5">18pt</option>
+                <option value="6">24pt</option>
+                <option value="7">36pt</option>
+              </select>
+              
+              <div class="w-px h-6 bg-gray-300 mx-1"></div>
+              
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="굵게 (Ctrl+B)"
+                onmousedown="event.preventDefault(); document.execCommand('bold', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                  <path d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z" />
+                </svg>
+              </button>
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="기울임 (Ctrl+I)"
+                onmousedown="event.preventDefault(); document.execCommand('italic', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M19 4h-9 M14 20H5 M15 4L9 20" />
+                </svg>
+              </button>
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="밑줄 (Ctrl+U)"
+                onmousedown="event.preventDefault(); document.execCommand('underline', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M6 3v7a6 6 0 006 6 6 6 0 006-6V3 M4 21h16" />
+                </svg>
+              </button>
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="취소선"
+                onmousedown="event.preventDefault(); document.execCommand('strikeThrough', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M16 4H9a3 3 0 00-3 3v1a3 3 0 003 3h6a3 3 0 013 3v1a3 3 0 01-3 3H8 M4 12h16" />
+                </svg>
+              </button>
+              
+              <div class="w-px h-6 bg-gray-300 mx-1"></div>
+              
+              <div class="relative">
+                <input
+                  type="color"
+                  value="#ff0000"
+                  class="absolute opacity-0 w-8 h-8 cursor-pointer"
+                  onchange="document.execCommand('foreColor', false, this.value)"
+                />
+                <button class="p-1.5 hover:bg-gray-200 rounded flex items-center gap-1" title="글자색">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M4 20h16 M9 4l3 8 3-8 M7 12h10" />
+                  </svg>
+                  <span class="w-4 h-1 bg-red-500 rounded-sm"></span>
+                </button>
+              </div>
+              <div class="relative">
+                <input
+                  type="color"
+                  value="#ffff00"
+                  class="absolute opacity-0 w-8 h-8 cursor-pointer"
+                  onchange="document.execCommand('hiliteColor', false, this.value)"
+                />
+                <button class="p-1.5 hover:bg-gray-200 rounded flex items-center gap-1" title="배경색">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 2a2 2 0 00-2 2v11a3 3 0 106 0V4a2 2 0 00-2-2H4zm1 14a1 1 0 100-2 1 1 0 000 2zm5-1.757l4.9-4.9a2 2 0 000-2.828L13.485 5.1a2 2 0 00-2.828 0L10 5.757v8.486zM16 18H9.071l6-6H16a2 2 0 012 2v2a2 2 0 01-2 2z" clip-rule="evenodd" />
+                  </svg>
+                  <span class="w-4 h-1 bg-yellow-300 rounded-sm"></span>
+                </button>
+              </div>
+              
+              <div class="w-px h-6 bg-gray-300 mx-1"></div>
+              
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="왼쪽 정렬"
+                onmousedown="event.preventDefault(); document.execCommand('justifyLeft', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M3 6h18 M3 10h12 M3 14h18 M3 18h12" />
+                </svg>
+              </button>
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="가운데 정렬"
+                onmousedown="event.preventDefault(); document.execCommand('justifyCenter', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M3 6h18 M6 10h12 M3 14h18 M6 18h12" />
+                </svg>
+              </button>
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="오른쪽 정렬"
+                onmousedown="event.preventDefault(); document.execCommand('justifyRight', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M3 6h18 M9 10h12 M3 14h18 M9 18h12" />
+                </svg>
+              </button>
+              
+              <div class="w-px h-6 bg-gray-300 mx-1"></div>
+              
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="번호 목록"
+                onmousedown="event.preventDefault(); document.execCommand('insertOrderedList', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M10 6h11 M10 12h11 M10 18h11 M4 6h1v1H4z M4 11h1v2H4z M4 17h1v2H4z" />
+                </svg>
+              </button>
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="글머리 기호"
+                onmousedown="event.preventDefault(); document.execCommand('insertUnorderedList', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M9 6h12 M9 12h12 M9 18h12 M5 6h.01 M5 12h.01 M5 18h.01" />
+                </svg>
+              </button>
+              
+              <div class="w-px h-6 bg-gray-300 mx-1"></div>
+              
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="들여쓰기"
+                onmousedown="event.preventDefault(); document.execCommand('indent', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M3 6h18 M9 12h12 M3 18h18 M3 10l4 2-4 2z" />
+                </svg>
+              </button>
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="내어쓰기"
+                onmousedown="event.preventDefault(); document.execCommand('outdent', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M3 6h18 M9 12h12 M3 18h18 M7 10l-4 2 4 2z" />
+                </svg>
+              </button>
+              
+              <div class="w-px h-6 bg-gray-300 mx-1"></div>
+              
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="링크 삽입"
+                onmousedown="event.preventDefault(); const url = prompt('링크 URL을 입력하세요:', 'https://'); if (url) document.execCommand('createLink', false, url);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71 M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                </svg>
+              </button>
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="표 삽입"
+                onmousedown="event.preventDefault(); insertTable();"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M3 9h18 M3 15h18 M9 3v18 M15 3v18" />
+                </svg>
+              </button>
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="가로선 삽입"
+                onmousedown="event.preventDefault(); document.execCommand('insertHorizontalRule', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M3 12h18" />
+                </svg>
+              </button>
+              
+              <div class="w-px h-6 bg-gray-300 mx-1"></div>
+              
+              <button 
+                class="p-1.5 hover:bg-gray-200 rounded" 
+                title="서식 지우기"
+                onmousedown="event.preventDefault(); document.execCommand('removeFormat', false, null);"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <!-- 에디터 본문 -->
+            <div
+              id="editor-body"
+              contenteditable="true"
+              class="flex-1 p-4 overflow-y-auto custom-scrollbar text-sm outline-none"
+              style="min-height: 400px;"
+              oninput="updateCharCount()"
+              onkeydown="if (event.key === 'Tab') { event.preventDefault(); document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;'); }"
+            ></div>
+          </div>
+          
+          <!-- 에디터 하단 안내 -->
+          <div class="mt-3 flex items-center justify-between">
+            <p class="text-xs text-gray-400">
+              텍스트를 선택한 후 툴바 버튼을 클릭하여 서식을 적용하세요. 표 삽입 시 행/열 수를 입력할 수 있습니다.
+            </p>
+            <div class="text-xs text-gray-400">
+              <span id="char-count">0 자</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 빈 상태 -->
+        <div id="empty-state" class="flex-1 flex items-center justify-center text-gray-400">
+          <div class="text-center">
+            <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p class="text-lg font-medium text-gray-500">규정을 선택하세요</p>
+            <p class="text-sm mt-2">왼쪽 목록에서 규정을 선택하거나<br/>신규등록 버튼을 클릭하세요</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 데이터
+    let rules = [
+      {
+        id: 1,
+        name: '소비자 피해보상 규정',
+        content: `<h2 style="text-align: center;">공정거래위원회 고시 제2010-1호</h2>
+<table border="1" style="width: 100%; border-collapse: collapse;">
+  <thead>
+    <tr style="background-color: #f5f5f5;">
+      <th style="padding: 10px; border: 1px solid #ddd;">분쟁유형</th>
+      <th style="padding: 10px; border: 1px solid #ddd;">해결기준</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #ddd;">1. 구입 후 10일 이내에 정상적인 사용상태에서 발생한 성능·기능상의 하자로 중요한 수리를 요할 때</td>
+      <td style="padding: 10px; border: 1px solid #ddd;">제품 교환 또는 구입가 환급</td>
+    </tr>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #ddd;">2. 구입 후 1개월 이내에 정상적인 사용상태에서 발생한 성능·기능상의 하자로 중요한 수리를 요할 때</td>
+      <td style="padding: 10px; border: 1px solid #ddd;">제품 교환 또는 무상수리</td>
+    </tr>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #ddd;">3. 품질보증기간 이내에 정상적인 사용상태에서 발생한 성능·기능상의 하자<br/>- 1) 하자 발생시<br/>- 2) 수리 불가능시<br/>- 3) 교환 불가능시<br/>- 4) 동일 하자에 대하여 4회째 수리시</td>
+      <td style="padding: 10px; border: 1px solid #ddd;">- 무상수리<br/>- 제품 교환 또는 구입가 환급<br/>- 이기종 교환 또는 구입가 환급<br/>- 제품 교환 또는 구입가 환급</td>
+    </tr>
+  </tbody>
+</table>`,
+        updatedAt: '2024-01-15 10:30:00'
+      },
+      {
+        id: 2,
+        name: 'TG 서비스 규정',
+        content: `<h2>TG 서비스 규정</h2>
+<p>TG 제품의 서비스 규정입니다.</p>
+<ul>
+  <li>무상보증기간: 구입일로부터 1년</li>
+  <li>유상수리: 보증기간 이후 또는 고객 과실로 인한 고장</li>
+  <li>출장서비스: 전국 서비스센터 네트워크</li>
+</ul>`,
+        updatedAt: '2024-01-10 14:20:00'
+      },
+      {
+        id: 3,
+        name: 'PC DIRECT',
+        content: `<h2>PC DIRECT 서비스 규정</h2>
+<p>PC DIRECT 관련 서비스 규정입니다.</p>`,
+        updatedAt: '2023-12-20 09:15:00'
+      },
+      { id: 4, name: '현주 서비스 규정', content: '', updatedAt: '2023-11-05 16:45:00' },
+      { id: 5, name: '주연 서비스 규정', content: '', updatedAt: '2023-10-18 11:30:00' },
+      { id: 6, name: 'PS2 서비스 규정', content: '', updatedAt: '2023-09-22 13:00:00' },
+      { id: 7, name: 'CAPS 서비스 규정', content: '', updatedAt: '2023-08-30 10:00:00' },
+      { id: 8, name: '네오테크서비스규정', content: '', updatedAt: '2023-07-15 09:00:00' },
+      { id: 9, name: '로그아이 서비스 규정', content: '', updatedAt: '2023-06-28 14:30:00' },
+      { id: 10, name: 'P&C A/S표준', content: '', updatedAt: '2023-05-10 11:20:00' },
+      { id: 11, name: '도시바 코리아', content: '', updatedAt: '2023-04-22 16:00:00' },
+      { id: 12, name: '후지쯔 서비스 규정', content: '', updatedAt: '2023-03-15 10:45:00' },
+      { id: 13, name: '태흥IS 서비스 규정', content: '', updatedAt: '2023-02-28 09:30:00' },
+      { id: 14, name: '대원정보통신 서비스 규정', content: '', updatedAt: '2023-01-20 14:15:00' },
+      { id: 15, name: '웅진 서비스 규정', content: '', updatedAt: '2022-12-10 11:00:00' },
+      { id: 16, name: 'KLS 서비스 규정', content: '', updatedAt: '2022-11-05 13:45:00' }
+    ];
+
+    // 상태
+    let selectedRule = null;
+    let selectedRows = [];
+    let isNewMode = false;
+    let originalContent = '';
+
+    // 초기화
+    function init() {
+      renderRulesList();
+    }
+
+    // 규정 목록 렌더링
+    function renderRulesList() {
+      const container = document.getElementById('rules-list');
+      
+      container.innerHTML = rules.map(rule => `
+        <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-100 cursor-pointer transition-colors ${
+          selectedRule?.id === rule.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'hover:bg-gray-50'
+        }">
+          <input
+            type="checkbox"
+            ${selectedRows.includes(rule.id) ? 'checked' : ''}
+            onclick="event.stopPropagation(); handleSelectRow(${rule.id})"
+            class="w-4 h-4 rounded shrink-0"
+          />
+          <div class="flex-1 min-w-0" onclick="handleSelectRule(${rule.id})">
+            <p class="text-sm truncate ${selectedRule?.id === rule.id ? 'text-blue-700 font-medium' : 'text-gray-700'}">
+              ${rule.name}
+            </p>
+            <p class="text-xs text-gray-400 mt-0.5">
+              ${formatDate(rule.updatedAt)}
+              ${rule.content ? '<span class="ml-2 text-green-500">● 내용있음</span>' : '<span class="ml-2 text-gray-300">○ 내용없음</span>'}
+            </p>
+          </div>
+        </div>
+      `).join('');
+
+      updateSelectedCount();
+    }
+
+    // 체크박스 선택
+    function handleSelectRow(id) {
+      if (selectedRows.includes(id)) {
+        selectedRows = selectedRows.filter(i => i !== id);
+      } else {
+        selectedRows.push(id);
+      }
+      renderRulesList();
+    }
+
+    // 선택 개수 업데이트
+    function updateSelectedCount() {
+      document.getElementById('selected-count').textContent = selectedRows.length;
+      const deleteBtn = document.getElementById('delete-btn');
+      
+      if (selectedRows.length > 0) {
+        deleteBtn.className = 'w-full px-4 py-2 border rounded text-sm font-medium border-red-500 text-red-500 hover:bg-red-50';
+      } else {
+        deleteBtn.className = 'w-full px-4 py-2 border rounded text-sm font-medium border-gray-300 text-gray-400';
+      }
+    }
+
+    // 규정 선택
+    function handleSelectRule(id) {
+      const rule = rules.find(r => r.id === id);
+      
+      if (selectedRule?.id === id) return;
+      
+      // 변경사항 확인
+      const editorBody = document.getElementById('editor-body');
+      if (selectedRule && editorBody && editorBody.innerHTML !== originalContent) {
+        if (!confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) {
+          return;
+        }
+      }
+      
+      selectedRule = rule;
+      selectedRows = [];
+      isNewMode = false;
+      
+      showEditor(rule.name, rule.content, false);
+      renderRulesList();
+    }
+
+    // 신규 등록 모드
+    function handleNewMode() {
+      // 변경사항 확인
+      const editorBody = document.getElementById('editor-body');
+      if (selectedRule && editorBody && editorBody.innerHTML !== originalContent) {
+        if (!confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) {
+          return;
+        }
+      }
+      
+      isNewMode = true;
+      selectedRule = null;
+      
+      showEditor('', '', true);
+      renderRulesList();
+    }
+
+    // 에디터 표시
+    function showEditor(name, content, isNew) {
+      const emptyState = document.getElementById('empty-state');
+      const editorContainer = document.getElementById('editor-container');
+      const editorHeader = document.getElementById('editor-header');
+      const editorActions = document.getElementById('editor-actions');
+      const editorBody = document.getElementById('editor-body');
+      const saveBtn = document.getElementById('save-btn');
+      
+      emptyState.classList.add('hidden');
+      editorContainer.classList.remove('hidden');
+      editorActions.classList.remove('hidden');
+      
+      if (isNew) {
+        editorHeader.innerHTML = `
+          <div class="flex items-center gap-3">
+            <label class="text-sm font-medium text-gray-700">서비스규정 분류</label>
+            <input
+              type="text"
+              id="new-rule-name"
+              placeholder="새 규정 분류명 입력"
+              class="border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 w-64"
+            />
+          </div>
+        `;
+        saveBtn.textContent = '등록';
+      } else {
+        editorHeader.innerHTML = `
+          <div>
+            <h2 class="font-bold text-gray-800">${name}</h2>
+            <p class="text-xs text-gray-500 mt-1">최종 수정: ${selectedRule.updatedAt}</p>
+          </div>
+        `;
+        saveBtn.textContent = '저장';
+      }
+      
+      editorBody.innerHTML = content;
+      originalContent = content;
+      updateCharCount();
+    }
+
+    // 취소
+    function handleCancel() {
+      const emptyState = document.getElementById('empty-state');
+      const editorContainer = document.getElementById('editor-container');
+      const editorActions = document.getElementById('editor-actions');
+      
+      isNewMode = false;
+      selectedRule = null;
+      
+      emptyState.classList.remove('hidden');
+      editorContainer.classList.add('hidden');
+      editorActions.classList.add('hidden');
+      
+      renderRulesList();
+    }
+
+    // 저장
+    function handleSave() {
+      const editorBody = document.getElementById('editor-body');
+      const content = editorBody.innerHTML;
+      
+      if (isNewMode) {
+        const newRuleName = document.getElementById('new-rule-name').value.trim();
+        if (!newRuleName) {
+          alert('규정 분류명을 입력하세요.');
+          return;
+        }
+        
+        const newRule = {
+          id: Math.max(...rules.map(r => r.id)) + 1,
+          name: newRuleName,
+          content: content,
+          updatedAt: new Date().toISOString().replace('T', ' ').slice(0, 19)
+        };
+        
+        rules.push(newRule);
+        selectedRule = newRule;
+        isNewMode = false;
+        originalContent = content;
+        
+        showEditor(newRule.name, newRule.content, false);
+        renderRulesList();
+        alert('신규 규정이 등록되었습니다.');
+      } else if (selectedRule) {
+        rules = rules.map(r => 
+          r.id === selectedRule.id 
+            ? { ...r, content: content, updatedAt: new Date().toISOString().replace('T', ' ').slice(0, 19) }
+            : r
+        );
+        
+        selectedRule.content = content;
+        selectedRule.updatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
+        originalContent = content;
+        
+        showEditor(selectedRule.name, selectedRule.content, false);
+        renderRulesList();
+        alert('규정이 저장되었습니다.');
+      }
+    }
+
+    // 삭제
+    function handleDelete() {
+      if (selectedRows.length === 0) {
+        alert('삭제할 규정을 선택하세요.');
+        return;
+      }
+      
+      if (confirm(`선택한 ${selectedRows.length}개의 규정을 삭제하시겠습니까?`)) {
+        rules = rules.filter(r => !selectedRows.includes(r.id));
+        
+        if (selectedRule && selectedRows.includes(selectedRule.id)) {
+          handleCancel();
+        }
+        
+        selectedRows = [];
+        renderRulesList();
+      }
+    }
+
+    // 표 삽입
+    function insertTable() {
+      const rows = prompt('행 수를 입력하세요:', '3');
+      const cols = prompt('열 수를 입력하세요:', '3');
+      
+      if (rows && cols) {
+        let table = '<table border="1" style="width:100%; border-collapse:collapse;">';
+        for (let i = 0; i < parseInt(rows); i++) {
+          table += '<tr>';
+          for (let j = 0; j < parseInt(cols); j++) {
+            table += '<td style="padding:8px; border:1px solid #ddd;">&nbsp;</td>';
+          }
+          table += '</tr>';
+        }
+        table += '</table>';
+        document.execCommand('insertHTML', false, table);
+      }
+    }
+
+    // 글자 수 업데이트
+    function updateCharCount() {
+      const editorBody = document.getElementById('editor-body');
+      const charCount = document.getElementById('char-count');
+      
+      if (editorBody && charCount) {
+        const length = editorBody.innerHTML.length;
+        charCount.textContent = length > 0 ? `${length.toLocaleString()} 자` : '0 자';
+      }
+    }
+
+    // 날짜 포맷
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      return dateStr.split(' ')[0];
+    }
+
+    // 초기화 실행
+    init();
+  </script>
+</body>
+</html>
